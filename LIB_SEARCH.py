@@ -166,11 +166,35 @@ def main():
     if mode == "1":
         raw_items = read_items_from_paste()
     elif mode == "2":
-        path = input("Enter TXT file path: ").strip()
-        if path.startswith("&"):
-            path = path.lstrip("& ").strip()
-        path = path.strip().strip('"').strip("'")
-        raw_items = read_items_from_txt(path)
+        # Use libs.txt in the same directory as this script for input/output
+        libs_path = Path(__file__).parent / "libs.txt"
+        if not libs_path.exists():
+            libs_path.write_text(
+                "# Add newline-separated library lines (e.g. Firebase-10.24.0)\n",
+                encoding="utf-8",
+            )
+            print(c(f"Created {libs_path}", Fore.YELLOW))
+            input("Edit the file as needed, then press Enter to continue...")
+        else:
+            print(c(f"Using {libs_path}", Fore.MAGENTA))
+
+        raw_items = read_items_from_txt(str(libs_path))
+
+        # Offer to save a normalized, de-duplicated list back to libs.txt
+        raw_lines = []
+        _seen_raw = set()
+        for raw, _name, _ver in raw_items:
+            if raw not in _seen_raw:
+                _seen_raw.add(raw)
+                raw_lines.append(raw)
+
+        try:
+            resp = input("Save normalized list back to libs.txt? (Y/n): ").strip().lower()
+        except Exception:
+            resp = "y"
+        if resp in ("", "y", "yes"):
+            libs_path.write_text("\n".join(raw_lines) + ("\n" if raw_lines else ""), encoding="utf-8")
+            print(c("libs.txt updated.", Fore.GREEN))
     else:
         print("Invalid mode.")
         return
