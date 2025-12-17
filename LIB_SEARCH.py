@@ -175,12 +175,14 @@ def main():
         print("Invalid mode.")
         return
 
-    dedup = {}
+    items = []
+    seen = set()
     for raw, name, ver in raw_items:
-        if not ver:
+        key = (name, ver)
+        if key in seen:
             continue
-        dedup[(name, ver)] = raw
-    items = [(dedup[k], k[0], k[1]) for k in dedup.keys()]
+        seen.add(key)
+        items.append((raw, name, ver))
 
     if not items:
         print("NO RESULTS")
@@ -190,6 +192,7 @@ def main():
     seen = set()
     for raw, name, ver in items:
         entry = {"raw": raw, "name": name, "ver": ver, "vulns": [], "error": None}
+
         try:
             vulns = nvd_query(name, ver, api_key=api_key)
         except requests.HTTPError as e:
