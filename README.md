@@ -3,8 +3,9 @@
 一支使用 NVD CVE API (`https://services.nvd.nist.gov/rest/json/cves/2.0`) 檢查第三方套件版本是否存在高風險漏洞（CVSS >= 7.0）的簡易 CLI。以套件名稱＋版本做 keyword search 並列出符合門檻的 CVE。執行檔：`LIB_SEARCH.py`。執行時會顯示 API 名稱、端點、掃描開始/結束時間與耗時，方便截圖佐證。
 
 ## 功能
-- 讀取貼上或 TXT 檔列出的套件名稱與版本
+- 讀取貼上輸入或專案根目錄的 `libs.txt`（選項 2 固定使用此檔，無需再提供自訂 TXT 路徑）
 - 自動解析 `名稱-版本` 或 `名稱_版本`（接受 `v` 前綴）並去重複
+- 若缺少 `libs.txt` 會自動建立模板；掃描後可選擇將去重、正規化後的清單覆寫回檔案
 - 呼叫 NVD CVE API 以名稱＋版本關鍵字查詢，僅輸出高風險項目
 - 以 CVSS 分數排序並列出對應 NVD 詳細頁，逐一呈現每個輸入項；若查無結果會標示 `NO RESULT`
 
@@ -29,9 +30,10 @@ pip install -r requirement.txt
 python LIB_SEARCH.py
 ```
 - 選項 1：直接貼上多行輸入，空白行結束。
-- 選項 2：提供純文字檔路徑，每行一個項目；路徑可含空白，例如 `C:\Users\...\libs.txt`。在 PowerShell 不需要前綴 `& '...'`，就貼上路徑即可。
+- 選項 2：使用與 `LIB_SEARCH.py` 同目錄的 `libs.txt`。若檔案不存在會建立帶註解的模板並暫停，編輯後按 Enter 繼續；掃描後會詢問是否用去重後的清單覆蓋 `libs.txt`。
 
 ### 輸入格式範例
+`libs.txt` 或貼上內容皆為每行一筆：
 ```
 Firebase-10.24.0
 AFNetworking-4.0.1
@@ -65,6 +67,7 @@ DPHSDK-v3.4.3
 - NVD API Key：設 `NVD_API_KEY` 可提升配額並降低 429 的機率。
 
 ## 注意事項
+- 選項 2 固定讀取 `libs.txt`，不需輸入檔案路徑；若檔案為只讀，覆寫步驟會失敗。
 - 若環境無法自動安裝套件，請改用手動安裝流程。
 - 只會列出能取得 CVSS 分數且達到門檻的漏洞；若無 CVSS 分數則不列出。
 - NVD 未必能以 keyword search 精準匹配所有套件/版本，若查詢結果為 0，可嘗試調整名稱或版本格式。
