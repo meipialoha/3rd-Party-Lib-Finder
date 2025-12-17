@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+# pytest cache
+.pytest_cache/
+
+# Byte-compiled / optimized / DLL files
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# virtual env
+venv/
+env/
