@@ -161,7 +161,8 @@ def main():
     print("Select input mode:")
     print("1) Paste items (line-by-line, blank line to finish)")
     print("2) Load from TXT file (newline separated)")
-    mode = input("Enter 1 or 2: ").strip()
+    print("3) Load from libs.txt directly (no normalization prompt)")
+    mode = input("Enter 1, 2, or 3: ").strip()
 
     if mode == "1":
         raw_items = read_items_from_paste()
@@ -195,6 +196,18 @@ def main():
         if resp in ("", "y", "yes"):
             libs_path.write_text("\n".join(raw_lines) + ("\n" if raw_lines else ""), encoding="utf-8")
             print(c("libs.txt updated.", Fore.GREEN))
+    elif mode == "3":
+        libs_path = Path(__file__).parent / "libs.txt"
+        if not libs_path.exists():
+            libs_path.write_text(
+                "# Add newline-separated library lines (e.g. Firebase-10.24.0)\n",
+                encoding="utf-8",
+            )
+            print(c(f"Created {libs_path}", Fore.YELLOW))
+            print("Edit the file as needed, then rerun.")
+            return
+        print(c(f"Using {libs_path}", Fore.MAGENTA))
+        raw_items = read_items_from_txt(str(libs_path))
     else:
         print("Invalid mode.")
         return
@@ -214,38 +227,42 @@ def main():
 
     per_input = []
     seen = set()
-    for raw, name, ver in items:
-        entry = {"raw": raw, "name": name, "ver": ver, "vulns": [], "error": None}
+    if mode == "3":
+        for raw, name, ver in items:
+            per_input.append({"raw": raw, "name": name, "ver": ver, "vulns": [], "error": None})
+    else:
+        for raw, name, ver in items:
+            entry = {"raw": raw, "name": name, "ver": ver, "vulns": [], "error": None}
 
-        try:
-            vulns = nvd_query(name, ver, api_key=api_key)
-        except requests.HTTPError as e:
-            entry["error"] = f"NVD query failed: {e}"
-            per_input.append(entry)
-            continue
-        except Exception as e:
-            entry["error"] = f"NVD query error: {e}"
-            per_input.append(entry)
-            continue
-
-        for v in vulns:
-            is_high, cvss = extract_high_risk_vulns_nvd(v)
-            if not is_high:
+            try:
+                vulns = nvd_query(name, ver, api_key=api_key)
+            except requests.HTTPError as e:
+                entry["error"] = f"NVD query failed: {e}"
+                per_input.append(entry)
                 continue
-            cve_data = v.get("cve") or {}
-            cve_id = cve_data.get("id", "")
-            key = (raw, cve_id)
-            if key in seen:
+            except Exception as e:
+                entry["error"] = f"NVD query error: {e}"
+                per_input.append(entry)
                 continue
-            seen.add(key)
-            entry["vulns"].append({
-                "cve_id": cve_id,
-                "cvss": cvss,
-                "summary": get_description_nvd(v)
-            })
 
-        entry["vulns"].sort(key=lambda x: (x["cvss"] if x["cvss"] is not None else -1), reverse=True)
-        per_input.append(entry)
+            for v in vulns:
+                is_high, cvss = extract_high_risk_vulns_nvd(v)
+                if not is_high:
+                    continue
+                cve_data = v.get("cve") or {}
+                cve_id = cve_data.get("id", "")
+                key = (raw, cve_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                entry["vulns"].append({
+                    "cve_id": cve_id,
+                    "cvss": cvss,
+                    "summary": get_description_nvd(v)
+                })
+
+            entry["vulns"].sort(key=lambda x: (x["cvss"] if x["cvss"] is not None else -1), reverse=True)
+            per_input.append(entry)
 
     if not per_input:
         print("NO INPUTS")
